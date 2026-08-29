@@ -1,5 +1,11 @@
 import { next } from '@vercel/functions';
-import { createToken, verifyToken, parseCookie, timingSafeEqual } from './lib/auth.js';
+import {
+  createToken,
+  verifyToken,
+  parseCookie,
+  loadPasswords,
+  findMatchingPassword,
+} from './lib/auth.js';
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 дней
 
@@ -20,12 +26,12 @@ export default async function middleware(request) {
       });
     }
 
-    const SITE_PASSWORD = process.env.SITE_PASSWORD;
     const AUTH_SECRET = process.env.AUTH_SECRET;
+    const passwords = loadPasswords();
 
-    if (!SITE_PASSWORD || !AUTH_SECRET) {
+    if (!AUTH_SECRET || passwords.length === 0) {
       return Response.json(
-        { error: 'Сервер не настроен (SITE_PASSWORD / AUTH_SECRET).' },
+        { error: 'Сервер не настроен (AUTH_SECRET / SITE_PASSWORDS_JSON).' },
         { status: 500 },
       );
     }
@@ -38,13 +44,16 @@ export default async function middleware(request) {
       return Response.json({ error: 'Некорректный запрос.' }, { status: 400 });
     }
 
+    // Небольшая задержка против брутфорса
     await new Promise((r) => setTimeout(r, 350));
 
-    if (!timingSafeEqual(password, SITE_PASSWORD)) {
+    const match = findMatchingPassword(password, passwords);
+    if (!match) {
       return Response.json({ error: 'Неверный пароль.' }, { status: 401 });
     }
 
-    const token = await createToken(AUTH_SECRET, SITE_PASSWORD, COOKIE_MAX_AGE);
+    // Токен привязан именно к этому паролю
+    const token = await createToken(AUTH_SECRET, match.password, COOKIE_MAX_AGE);
     const cookie = [
       `auth=${token}`,
       'Path=/',
@@ -90,14 +99,14 @@ export default async function middleware(request) {
 
   // ---------- 4. Всё остальное — проверка cookie ----------
   const AUTH_SECRET = process.env.AUTH_SECRET;
-  const SITE_PASSWORD = process.env.SITE_PASSWORD;
+  const passwords = loadPasswords();
 
-  if (!AUTH_SECRET || !SITE_PASSWORD) {
-    return new Response('Missing AUTH_SECRET or SITE_PASSWORD', { status: 500 });
+  if (!AUTH_SECRET || passwords.length === 0) {
+    return new Response('Missing AUTH_SECRET or SITE_PASSWORDS_JSON', { status: 500 });
   }
 
   const token = parseCookie(request, 'auth');
-  const isValid = await verifyToken(token, AUTH_SECRET, SITE_PASSWORD);
+  const isValid = await verifyToken(token, AUTH_SECRET, passwords);
 
   if (!isValid) {
     return Response.redirect(new URL('/login.html', request.url), 302);
