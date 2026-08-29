@@ -1,0 +1,9 @@
+{
+  "name": "password-gate",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@upstash/redis": "^1.34.3",
+    "@vercel/functions": "^1.5.0"
+  }
+}

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Админка — пароли</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0a0e12;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    color: #cddcf2;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  h2 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #9bb0cc;
+  }
+  .sub {
+    margin: 0 0 28px;
+    font-size: 13px;
+    color: #6b7f9a;
+  }
+  .card {
+    background: #111820;
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: #7f96b8;
+    margin-bottom: 6px;
+  }
+  input {
+    width: 100%;
+    padding: 11px 13px;
+    background: #0a1018;
+    border: 1px solid #2a3a4c;
+    border-radius: 6px;
+    color: #e0eaf8;
+    font-size: 14px;
+    outline: none;
+  }
+  input:focus { border-color: #3d7ab8; }
+  .row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .row > div { flex: 1; min-width: 140px; }
+  button {
+    padding: 11px 18px;
+    background: #1a3d5c;
+    border: 1px solid #2a5a80;
+    border-radius: 6px;
+    color: #d6e8ff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: #234d72; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.danger {
+    background: #3a1a1a;
+    border-color: #6a2a2a;
+    color: #ffb0b0;
+  }
+  button.danger:hover:not(:disabled) { background: #4a2222; }
+  button.ghost {
+    background: transparent;
+    border-color: #2a3a4c;
+    color: #8aa0bc;
+  }
+  .error {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #ff7a7a;
+    min-height: 18px;
+  }
+  .ok {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #6dce8a;
+    min-height: 18px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #1e2a38;
+  }
+  th {
+    color: #6b7f9a;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  td.mono {
+    font-family: ui-monospace, 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .actions { white-space: nowrap; }
+  .actions button { padding: 6px 12px; font-size: 12px; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  #login-view, #panel-view { display: none; }
+  #login-view.active, #panel-view.active { display: block; }
+  .empty {
+    text-align: center;
+    padding: 28px;
+    color: #5a6e88;
+    font-size: 13px;
+  }
+  .hint {
+    font-size: 12px;
+    color: #5a6e88;
+    margin-top: 10px;
+    line-height: 1.45;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .card-head h2 { margin: 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div id="login-view">
+      <h1>Админка</h1>
+      <p class="sub">Управление паролями доступа</p>
+      <div class="card">
+        <label for="admin-pass">Админ-пароль</label>
+        <input id="admin-pass" type="password" autocomplete="current-password" placeholder="ADMIN_PASSWORD" />
+        <div style="margin-top:14px">
+          <button id="btn-admin-login">Войти</button>
+        </div>
+        <div class="error" id="login-error"></div>
+      </div>
+    </div>
+
+    <div id="panel-view">
+      <div class="topbar">
+        <div>
+          <h1>Пароли доступа</h1>
+          <p class="sub" style="margin:0">Добавляй и удаляй людей без деплоя</p>
+        </div>
+        <button class="ghost" id="btn-admin-logout">Выйти</button>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="new-name">Имя / ник</label>
+            <input id="new-name" type="text" placeholder="Например: Аня" maxlength="64" />
+          </div>
+          <div>
+            <label for="new-pass">Пароль</label>
+            <input id="new-pass" type="text" placeholder="FR-xxxxx..." maxlength="128" />
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+          <button id="btn-add">Добавить / обновить</button>
+          <button class="ghost" id="btn-gen">Сгенерировать пароль</button>
+        </div>
+        <div class="ok" id="add-ok"></div>
+        <div class="error" id="add-error"></div>
+        <p class="hint">Если имя уже есть — пароль обновится. Старые сессии этого человека сразу перестанут работать.</p>
+      </div>
+
+      <div class="card" style="padding:0; overflow:hidden">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left:22px">Имя</th>
+              <th>Пароль</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="list-body">
+            <tr><td colspan="3" class="empty">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Журнал входов -->
+      <div class="card" style="padding:0; overflow:hidden">
+        <div style="padding:18px 22px 0; display:flex; justify-content:space-between; align-items:center">
+          <h2>Журнал входов</h2>
+          <button class="ghost" id="btn-clear-log" style="padding:6px 12px; font-size:12px">Очистить</button>
+        </div>
+        <p class="hint" style="padding:6px 22px 12px; margin:0">Последние 100 успешных входов. Имя — как в списке паролей.</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left:22px">Имя</th>
+              <th>Время</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="2" class="empty">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const loginView = document.getElementById('login-view');
+  const panelView = document.getElementById('panel-view');
+  const loginError = document.getElementById('login-error');
+  const addOk = document.getElementById('add-ok');
+  const addError = document.getElementById('add-error');
+  const listBody = document.getElementById('list-body');
+  const logBody = document.getElementById('log-body');
+
+  function showLogin() {
+    loginView.classList.add('active');
+    panelView.classList.remove('active');
+  }
+  function showPanel() {
+    loginView.classList.remove('active');
+    panelView.classList.add('active');
+    loadList();
+    loadLog();
+  }
+
+  function genPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%_-+=';
+    let s = 'FR-';
+    for (let i = 0; i < 18; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function formatTime(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  function renderList(passwords) {
+    if (!passwords || passwords.length === 0) {
+      listBody.innerHTML = '<tr><td colspan="3" class="empty">Пока никого нет. Добавь первого человека выше.</td></tr>';
+      return;
+    }
+    listBody.innerHTML = passwords.map((p) => `
+      <tr>
+        <td style="padding-left:22px">${escapeHtml(p.name)}</td>
+        <td class="mono">${escapeHtml(p.password)}</td>
+        <td class="actions">
+          <button class="danger" data-del="${escapeAttr(p.name)}">Удалить</button>
+        </td>
+      </tr>
+    `).join('');
+
+    listBody.querySelectorAll('[data-del]').forEach((btn) => {
+      btn.addEventListener('click', () => removePerson(btn.getAttribute('data-del')));
+    });
+  }
+
+  function renderLog(log) {
+    if (!log || log.length === 0) {
+      logBody.innerHTML = '<tr><td colspan="2" class="empty">Пока никто не входил</td></tr>';
+      return;
+    }
+    logBody.innerHTML = log.map((e) => `
+      <tr>
+        <td style="padding-left:22px">${escapeHtml(e.name || '—')}</td>
+        <td>${escapeHtml(formatTime(e.at))}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadList() {
+    listBody.innerHTML = '<tr><td colspan="3" class="empty">Загрузка…</td></tr>';
+    try {
+      const res = await fetch('/api/admin/passwords');
+      if (res.status === 401) { showLogin(); return; }
+      const data = await res.json();
+      if (!res.ok) {
+        listBody.innerHTML = `<tr><td colspan="3" class="empty">${escapeHtml(data.error || 'Ошибка')}</td></tr>`;
+        return;
+      }
+      renderList(data.passwords);
+    } catch {
+      listBody.innerHTML = '<tr><td colspan="3" class="empty">Не удалось загрузить список</td></tr>';
+    }
+  }
+
+  async function loadLog() {
+    logBody.innerHTML = '<tr><td colspan="2" class="empty">Загрузка…</td></tr>';
+    try {
+      const res = await fetch('/api/admin/log');
+      if (res.status === 401) { showLogin(); return; }
+      const data = await res.json();
+      if (!res.ok) {
+        logBody.innerHTML = `<tr><td colspan="2" class="empty">${escapeHtml(data.error || 'Ошибка')}</td></tr>`;
+        return;
+      }
+      renderLog(data.log);
+    } catch {
+      logBody.innerHTML = '<tr><td colspan="2" class="empty">Не удалось загрузить журнал</td></tr>';
+    }
+  }
+
+  async function removePerson(name) {
+    if (!confirm(`Удалить «${name}»? Сессии этого человека сразу перестанут работать.`)) return;
+    try {
+      const res = await fetch('/api/admin/passwords', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (res.status === 401) { showLogin(); return; }
+      if (!res.ok) {
+        addError.textContent = data.error || 'Ошибка удаления';
+        return;
+      }
+      renderList(data.passwords);
+      addOk.textContent = `«${name}» удалён`;
+      addError.textContent = '';
+    } catch {
+      addError.textContent = 'Не удалось удалить';
+    }
+  }
+
+  document.getElementById('btn-admin-login').addEventListener('click', async () => {
+    const input = document.getElementById('admin-pass');
+    const btn = document.getElementById('btn-admin-login');
+    loginError.textContent = '';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: input.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        loginError.textContent = data.error || 'Ошибка';
+        return;
+      }
+      showPanel();
+    } catch {
+      loginError.textContent = 'Не удалось связаться с сервером';
+    } finally {
+      btn.disabled = false;
+      input.value = '';
+    }
+  });
+
+  document.getElementById('admin-pass').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-admin-login').click();
+  });
+
+  document.getElementById('btn-admin-logout').addEventListener('click', () => {
+    location.href = '/api/admin/logout';
+  });
+
+  document.getElementById('btn-gen').addEventListener('click', () => {
+    document.getElementById('new-pass').value = genPassword();
+  });
+
+  document.getElementById('btn-add').addEventListener('click', async () => {
+    const name = document.getElementById('new-name').value.trim();
+    const password = document.getElementById('new-pass').value;
+    addOk.textContent = '';
+    addError.textContent = '';
+    if (!name || !password) {
+      addError.textContent = 'Укажи имя и пароль';
+      return;
+    }
+    const btn = document.getElementById('btn-add');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/passwords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password }),
+      });
+      const data = await res.json();
+      if (res.status === 401) { showLogin(); return; }
+      if (!res.ok) {
+        addError.textContent = data.error || 'Ошибка';
+        return;
+      }
+      renderList(data.passwords);
+      addOk.textContent = `«${name}» сохранён`;
+      document.getElementById('new-name').value = '';
+      document.getElementById('new-pass').value = '';
+    } catch {
+      addError.textContent = 'Не удалось сохранить';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-clear-log').addEventListener('click', async () => {
+    if (!confirm('Очистить весь журнал входов?')) return;
+    try {
+      const res = await fetch('/api/admin/log', { method: 'DELETE' });
+      if (res.status === 401) { showLogin(); return; }
+      const data = await res.json();
+      if (res.ok) renderLog(data.log || []);
+    } catch { /* ignore */ }
+  });
+
+  (async () => {
+    try {
+      const res = await fetch('/api/admin/passwords');
+      if (res.status === 401) showLogin();
+      else {
+        showPanel();
+        if (res.ok) {
+          const data = await res.json();
+          renderList(data.passwords);
+        }
+      }
+    } catch {
+      showLogin();
+    }
+  })();
+</script>
+</body>
+</html>
