@@ -1,35 +1,53 @@
 import { next } from '@vercel/functions';
 import { verifyToken, parseCookie } from './lib/auth.js';
 
-// Routing Middleware не входит в лимит "12 функций" на Hobby-плане Vercel —
-// это отдельный механизм, выполняется на edge перед отдачей любой страницы.
+// Пути, которые middleware НЕ должен трогать
+const PUBLIC = new Set([
+  '/login.html',
+  '/api/login',
+  '/api/logout',
+  '/favicon.ico',
+]);
+
 export const config = {
-  // Срабатывает на всё, КРОМЕ:
-  //  - /api/login      (иначе форма логина не сможет отправить пароль)
-  //  - /api/logout      (чтобы можно было выйти)
-  //  - login.html       (сама страница логина)
-  //  - favicon.ico
-  matcher: ['/((?!api/login|api/logout|login\\.html|favicon\\.ico).*)'],
+  // Берём всё. Исключения делаем внутри функции — так надёжнее.
+  matcher: ['/(.*)'],
 };
 
 export default async function middleware(request) {
-  const AUTH_SECRET = process.env.AUTH_SECRET;
+  const { pathname } = new URL(request.url);
 
+  // 1. Публичные пути — сразу пропускаем
+  if (PUBLIC.has(pathname)) {
+    return next();
+  }
+
+  // 2. Секрет
+  const AUTH_SECRET = process.env.AUTH_SECRET;
   if (!AUTH_SECRET) {
     return new Response(
-      'Сервер не настроен: в переменных окружения Vercel отсутствует AUTH_SECRET.',
-      { status: 500 },
+      'Сервер не настроен: отсутствует AUTH_SECRET.',
+      { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
     );
   }
 
+  // 3. Проверка cookie
   const token = parseCookie(request, 'auth');
   const isValid = await verifyToken(token, AUTH_SECRET);
 
   if (!isValid) {
-    const loginUrl = new URL('/login.html', request.url);
-    return Response.redirect(loginUrl, 302);
+    // Для API — 401 (а не редирект)
+    if (pathname.startsWith('/api/')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Для страниц — редирект на логин
+    return Response.redirect(new URL('/login.html', request.url), 302);
   }
 
-  // Кука валидна — пропускаем запрос дальше, к статике (index.html и т.д.)
+  // Всё ок
   return next();
 }
