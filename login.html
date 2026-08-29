@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Вход</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 30%, #0d1b12 0%, #05080a 70%);
+    font-family: 'Courier New', ui-monospace, monospace;
+    color: #b7ffb7;
+  }
+  .panel {
+    width: 100%;
+    max-width: 340px;
+    padding: 32px 28px;
+    border: 1px solid #1f4a2a;
+    border-radius: 8px;
+    background: rgba(10, 20, 12, 0.85);
+    box-shadow: 0 0 40px rgba(60, 255, 120, 0.08), inset 0 0 20px rgba(0, 0, 0, 0.4);
+  }
+  .radar {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    border: 2px solid #2c6b3a;
+    position: relative;
+    overflow: hidden;
+  }
+  .radar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 0deg, rgba(90,255,140,0.9), rgba(90,255,140,0) 40%);
+    animation: spin 2.4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+    color: #9dffb0;
+  }
+  p.sub {
+    margin: 0 0 22px;
+    text-align: center;
+    font-size: 12px;
+    color: #4f8a5c;
+  }
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    background: #06120a;
+    border: 1px solid #235330;
+    border-radius: 4px;
+    color: #d6ffe0;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+  input[type="password"]:focus {
+    border-color: #4fd67a;
+  }
+  button {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #163d20;
+    border: 1px solid #2c6b3a;
+    border-radius: 4px;
+    color: #d6ffe0;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover:not(:disabled) { background: #1f5229; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .error {
+    margin-top: 14px;
+    min-height: 18px;
+    font-size: 12px;
+    color: #ff7676;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="radar"></div>
+    <h1>Доступ ограничен</h1>
+    <p class="sub">Введите пароль для входа</p>
+    <form id="login-form" autocomplete="off">
+      <input
+        type="password"
+        id="password"
+        name="password"
+        placeholder="Пароль"
+        autofocus
+        required
+      />
+      <button type="submit" id="submit-btn">Войти</button>
+      <div class="error" id="error"></div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('error');
+    const btn = document.getElementById('submit-btn');
+    const input = document.getElementById('password');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Проверка...';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: input.value }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          window.location.replace('/');
+          return;
+        }
+
+        errorEl.textContent = data.error || 'Ошибка входа.';
+      } catch {
+        errorEl.textContent = 'Не удалось связаться с сервером.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        input.value = '';
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
