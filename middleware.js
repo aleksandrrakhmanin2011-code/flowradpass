@@ -11,7 +11,7 @@ export default async function middleware(request) {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
-  // ---------- 1. LOGIN (обрабатываем сами) ----------
+  // ---------- 1. LOGIN ----------
   if (pathname === '/api/login') {
     if (request.method !== 'POST') {
       return new Response('Method Not Allowed', {
@@ -38,14 +38,13 @@ export default async function middleware(request) {
       return Response.json({ error: 'Некорректный запрос.' }, { status: 400 });
     }
 
-    // Небольшая задержка против брутфорса
     await new Promise((r) => setTimeout(r, 350));
 
     if (!timingSafeEqual(password, SITE_PASSWORD)) {
       return Response.json({ error: 'Неверный пароль.' }, { status: 401 });
     }
 
-    const token = await createToken(AUTH_SECRET, COOKIE_MAX_AGE);
+    const token = await createToken(AUTH_SECRET, SITE_PASSWORD, COOKIE_MAX_AGE);
     const cookie = [
       `auth=${token}`,
       'Path=/',
@@ -84,19 +83,21 @@ export default async function middleware(request) {
     });
   }
 
-  // ---------- 3. Страница логина и favicon — пропускаем ----------
+  // ---------- 3. Страница логина и favicon ----------
   if (pathname === '/login.html' || pathname === '/favicon.ico') {
     return next();
   }
 
   // ---------- 4. Всё остальное — проверка cookie ----------
   const AUTH_SECRET = process.env.AUTH_SECRET;
-  if (!AUTH_SECRET) {
-    return new Response('Missing AUTH_SECRET', { status: 500 });
+  const SITE_PASSWORD = process.env.SITE_PASSWORD;
+
+  if (!AUTH_SECRET || !SITE_PASSWORD) {
+    return new Response('Missing AUTH_SECRET or SITE_PASSWORD', { status: 500 });
   }
 
   const token = parseCookie(request, 'auth');
-  const isValid = await verifyToken(token, AUTH_SECRET);
+  const isValid = await verifyToken(token, AUTH_SECRET, SITE_PASSWORD);
 
   if (!isValid) {
     return Response.redirect(new URL('/login.html', request.url), 302);
